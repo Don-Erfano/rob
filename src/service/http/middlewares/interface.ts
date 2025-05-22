@@ -1,55 +1,42 @@
-import { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 /**
- * Interface for defining middleware to be used with Axios instances.
- * Allows for intercepting requests and responses to perform custom operations, such as logging or modifying requests/responses.
+ * Interface for defining middleware to be used with the HTTP client.
  *
- * @template R The type of the response data expected in Axios responses.
+ * @template C Type of the request config (default: any).
+ * @template R Type of the response data (default: any).
  */
-export interface IMiddleware<R = {}> {
-  /**
-   * Optional property to specify the environment where the middleware should be active.
-   * Could be used to enable/disable middleware in development, staging, or production environments.
-   *
-   * @type {?string}
-   */
+export interface IMiddleware<C={} , R={} > {
+  /** Optional environment in which this middleware is active. */
   environment?: string;
 
   /**
-   * Optional method to process and potentially modify the Axios request configuration before the request is sent.
-   * Can be used to log request details, add headers, etc.
+   * Intercept and modify the request config before sending.
    *
-   * @param {InternalAxiosRequestConfig} value The original request configuration.
-   * @returns {InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>} The potentially modified request configuration or a promise that resolves to it.
+   * @param config The current request config.
+   * @returns The modified config or void.
    */
-  onRequest?(
-    value: InternalAxiosRequestConfig,
-  ): InternalAxiosRequestConfig | Promise<InternalAxiosRequestConfig>;
+  onRequest?(config: C): C | Promise<C>;
 
   /**
-   * Optional method to handle errors that occur during the request creation process.
-   * This can include errors in setting up the request, such as in interceptors, before the request is sent.
+   * Handle errors that occur during request setup.
    *
-   * @param {any} error The error object caught during the request setup.
-   * @returns {any} The processed error object or a promise that resolves to an error handling strategy.
+   * @param error The caught error.
+   * @returns Potential recovery action or void.
    */
   onRequestError?(error: any): any;
 
   /**
-   * Optional method to process and potentially modify the Axios response before it is passed to then/catch.
-   * Can be used to log response details, modify the response structure, etc.
+   * Intercept and modify the response before passing to the caller.
    *
-   * @param {AxiosResponse<R>} response The original response from the Axios request.
-   * @returns {AxiosResponse<R> | Promise<AxiosResponse<R>>} The potentially modified response or a promise that resolves to it.
+   * @param response The received response data.
+   * @returns The modified data or void.
    */
-  onResponse?(
-    response: AxiosResponse<R>,
-  ): AxiosResponse<R> | Promise<AxiosResponse<R>>;
+  onResponse?(response: R): R | Promise<R>;
 
   /**
-   * Optional method to handle errors that occur after the request has been made, such as server errors or network issues.
+   * Handle errors that occur after receiving the response.
    *
-   * @param {any} error The error object caught during the response phase.
-   * @returns {any} The processed error object or a promise that resolves to an error handling strategy.
+   * @param error The caught error.
+   * @returns Potential recovery action or void.
    */
   onResponseError?(error: any): any;
 }

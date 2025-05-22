@@ -1,107 +1,121 @@
-import axios, {
-  AxiosInstance,
-  AxiosResponse,
-  AxiosRequestConfig,
-  CreateAxiosDefaults,
-} from 'axios';
-import { IMiddleware } from '../middlewares';
-import { IHttpClient } from './interface';
+import {createAlova, Method} from 'alova';
+import adapterFetch from 'alova/fetch';
+import {IMiddleware} from '../middlewares/interface';
+import {IHttpClient} from './interface';
+import {useState} from 'react';
 
 /**
- * Represents an HTTP client to make requests using Axios as the underlying adapter.
+ * Represents an HTTP client using Alova as the underlying adapter.
  * Allows for the addition of middleware to intercept requests and responses.
  *
  * @class HttpClient
  * @implements {IHttpClient}
  */
-
 export default class HttpClient implements IHttpClient {
-  /**
-   * The Axios instance used by the HTTP client.
-   *
-   * @private
-   * @type {AxiosInstance}
-   */
-  private readonly adapter: AxiosInstance;
+  /** The internal Alova instance (cast through any to avoid generic mismatches). */
+  private alovaInstance: ReturnType<typeof createAlova> | null = null;
+
+  /** Registered middleware for request/response interception. */
+  private readonly _middlewares = new Set<IMiddleware>();
+
+  /** Whether `boot()` has been called. */
+  private isBooted = false;
+
+  /** Base URL for all requests. */
+  private readonly baseURL: string;
 
   /**
-   * A set of middleware objects that are applied to the Axios instance.
-   *
-   * @private
-   * @type {Set<IMiddleware>}
+   * @param config.baseURL Root URL for all API calls.
    */
-  private readonly _middlewares: Set<IMiddleware> = new Set<IMiddleware>();
-
-  /**
-   * Indicates whether the HttpClient has been booted and is ready to make requests.
-   *
-   * @private
-   * @type {boolean}
-   */
-  private isBooted: boolean;
-
-  /**
-   * Creates an instance of HttpClient.
-   * Initializes the Axios adapter with provided configuration and sets the booted flag to false.
-   *
-   * @param {CreateAxiosDefaults} config The Axios configuration used to create the Axios instance.
-   */
-  constructor(config: CreateAxiosDefaults) {
-    this.isBooted = false;
-    this.adapter = axios.create(config);
+  constructor(config: { baseURL: string }) {
+    this.baseURL = config.baseURL;
   }
 
   /**
-   * Provides access to the middleware set. Middleware can only be added before the HttpClient is booted.
+   * Access and register middleware **before** `boot()` is called.
    *
-   * @public
-   * @throws {Error} Throws an error if trying to access middleware after the client has been booted.
-   * @returns {Set<IMiddleware>} The set of middleware.
+   * @throws If called after `boot()`.
    */
   public get middlewares(): Set<IMiddleware> {
     if (this.isBooted) {
-      throw new Error(`Cannot add middleware after boot!`);
+      throw new Error('Cannot add middleware after boot!');
     }
-
     return this._middlewares;
   }
 
   /**
-   * Boots the HttpClient, registering any middleware added to the Axios instance.
-   * After this method is called, no more middleware can be added.
-   *
-   * @public
+   * Initialize Alova and wire up all middleware.
+   * After this, you can no longer add middleware.
    */
-  public boot() {
-    this.middlewares?.forEach((mw) => {
-      const env = mw.environment || process.env.NODE_ENV;
-      if (env === process.env.NODE_ENV) {
-        this.adapter.interceptors.request.use(mw.onRequest, mw.onRequestError);
-        this.adapter.interceptors.response.use(
-          mw.onResponse,
-          mw.onResponseError,
-        );
+  public boot(): void {
+    const beforeRequest = async (method: Method) => {
+      for (const mw of this._middlewares) {
+        const env = mw.environment ?? process.env.NODE_ENV;
+        if (env === process.env.NODE_ENV && mw.onRequest) {
+          const cfg = await mw.onRequest(method.config);
+          if (cfg) method.config = cfg;
+        }
       }
-    });
+    };
 
+    const responded = {
+      onSuccess: async (res: Response, method: Method) => {
+        for (const mw of this._middlewares) {
+          const env = mw.environment ?? process.env.NODE_ENV;
+          if (env === process.env.NODE_ENV && mw.onResponse) {
+            const data = await res.clone().json();
+            await mw.onResponse(data);
+          }
+        }
+        return res;
+      },
+      onError: async (err: unknown, method: Method) => {
+        for (const mw of this._middlewares) {
+          const env = mw.environment ?? process.env.NODE_ENV;
+          if (env === process.env.NODE_ENV && mw.onResponseError) {
+            await mw.onResponseError(err);
+          }
+        }
+        throw err;
+      }
+    };
+
+    this.alovaInstance = (createAlova as any)({
+      baseURL: this.baseURL,
+      requestAdapter: adapterFetch(),
+      statesHook: useState,
+      beforeRequest,
+      responded
+    });
     this.isBooted = true;
   }
 
   /**
-   * Makes an HTTP request using the Axios instance.
+   * Send a request and unwrap its `.data` payload.
    *
-   * @template T The expected response data type.
-   * @template R The Axios response type, defaulting to AxiosResponse<T>.
-   * @param {AxiosRequestConfig} config The Axios request configuration.
-   * @throws {Error} Throws an error if the HttpClient has not been booted yet.
-   * @returns {Promise<R>} A promise that resolves to the Axios response.
+   * @param methodInstance An Alova Method instance from `.instance.Get/Post/etc.`
+   * @returns A promise resolving to the response’s `.data`.
+   * @throws If not yet booted.
    */
-  public request<T = any, R = AxiosResponse<T>>(
-    config: AxiosRequestConfig,
-  ): Promise<R> {
-    if (!this.isBooted) {
-      throw new Error(`HttpAdapter not yet booted!`);
+  public request(methodInstance: Method): Promise<unknown> {
+    if (!this.isBooted || !this.alovaInstance) {
+      throw new Error('HttpClient not yet booted!');
     }
-    return this.adapter.request(config);
+    const p = methodInstance.send() as Promise<{ data: unknown }>;
+    return p.then(res => res.data);
+  }
+
+
+
+  /**
+   * Expose the raw Alova instance for advanced use (creating custom Methods).
+   *
+   * @throws If not yet booted.
+   */
+  public get instance(): ReturnType<typeof createAlova> {
+    if (!this.alovaInstance) {
+      throw new Error('Alova instance not yet initialized.');
+    }
+    return this.alovaInstance;
   }
 }

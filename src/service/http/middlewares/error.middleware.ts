@@ -1,13 +1,20 @@
-//import { INetworkResponse } from '../../endpoints/interface';
 import { IMiddleware } from './interface';
-import { AxiosError, AxiosRequestConfig } from 'axios';
 
+/**
+ * Middleware for routing to a custom error page on 5xx responses.
+ *
+ * @implements {IMiddleware}
+ */
 export default class ErrorMiddleware implements IMiddleware {
-  async onResponseError(
-    error: AxiosError,
-  ): Promise<AxiosRequestConfig | void> {
-    const { response } = error;
-    if (/5[0-9][0-9]/.exec(String(response?.status))) {
+  /**
+   * On server errors (5xx), redirect user to /error/e5xx.
+   *
+   * @param error The caught error object.
+   * @throws Propagates the original error after redirect.
+   */
+  public async onResponseError(error: any): Promise<any> {
+    const status = error?.status ?? error?.response?.status;
+    if (/5\d{2}/.test(String(status))) {
       window.location.replace(`${window.location.origin}/error/e5xx`);
     }
     throw error;

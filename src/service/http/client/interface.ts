@@ -1,29 +1,27 @@
-import { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { IMiddleware } from '../middlewares';
+import { Method } from 'alova';
+import { IMiddleware } from '../middlewares/interface';
 
 /**
- * Interface for HttpClient to ensure implementation consistency.
- * Defines the structure for making HTTP requests and managing middleware.
+ * Interface for an HTTP client backed by Alova.
  */
 export interface IHttpClient {
   /**
-   * Boots the HTTP client, preparing it for making requests.
-   * This typically includes applying any middleware.
+   * Boots the HTTP client, applying all registered middleware.
    */
   boot(): void;
 
   /**
-   * Makes an HTTP request with the given configuration.
-   * @param config The Axios request configuration.
-   * @returns A Promise that resolves to the Axios response.
+   * Sends a request and returns its `.data` payload.
+   *
+   * @param methodInstance An Alova Method instance (created via `.Get()`, `.Post()`, etc.).
+   * @returns A Promise resolving to whatever `.data` was in the response.
    */
-  request<T = any, R = AxiosResponse<T>>(
-    config: AxiosRequestConfig,
-  ): Promise<R>;
+  request(methodInstance: Method): Promise<unknown>;
+
+
 
   /**
-   * A property or method to manage middleware.
-   * This could be a property that allows adding middleware before the client is booted.
+   * Middleware set (must configure before `boot()`).
    */
   readonly middlewares: Set<IMiddleware>;
 }
