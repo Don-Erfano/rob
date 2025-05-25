@@ -1,32 +1,26 @@
-import type {
-    Camera,
-    ActiveContainer,
-    ServiceResponse,
-} from './interface';
-import {INetworkResponse} from "@/service/endpoints/interface";
-import AbstractHttp from "@/service/endpoints/abstract.http";
+import { ServiceResponse } from './interface';
+import { INetworkResponse } from '@/service/endpoints/interface';
+import AbstractHttp from '@/service/endpoints/abstract.http';
 
 export default class CameraService extends AbstractHttp {
     constructor() {
         super('/cameras');
     }
-
-
-    public getAll(): Promise<INetworkResponse<ServiceResponse>> {
-        const method = this.http.instance.Get<void, INetworkResponse<ServiceResponse>>(
-            this.url
-        );
-        return this.http.request(method) as Promise<INetworkResponse<ServiceResponse>>;
-    }
-
-
-    public getCameras(): Promise<Camera[]> {
-        return this.getAll().then(res => res.data.cameras);
-    }
-
-
-    public getActiveContainers(): Promise<ActiveContainer[]> {
-        return this.getAll().then(res => res.data.active_containers);
+    public getAll(): Promise<ServiceResponse> {
+        const method = this.http.instance.Get<void, INetworkResponse<ServiceResponse>>(this.url);
+        return this.http
+            .request(method)
+            .then((raw) => {
+                if (
+                    !raw ||
+                    typeof raw !== 'object' ||
+                    !Array.isArray((raw as any).cameras) ||
+                    !Array.isArray((raw as any).active_containers)
+                ) {
+                    throw new Error('Invalid payload shape from /cameras');
+                }
+                return raw as ServiceResponse;
+            });
     }
 }
 

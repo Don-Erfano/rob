@@ -1,4 +1,5 @@
-'use client'
+'use client';
+
 import clsx from 'clsx';
 import {useCameraService} from "@/service/app-services/cameras";
 
@@ -16,7 +17,7 @@ export default function Home() {
     if (error) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <p className="text-red-500">Error: {String(error)}</p>
+                <p className="text-red-500">Error: {error.message}</p>
             </div>
         );
     }

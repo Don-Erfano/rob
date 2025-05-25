@@ -2,13 +2,13 @@ export interface Camera {
     camera_id: string;
     rtsp_url: string;
     fps: number | null;
-    status: 'stopped' | 'active';
-    stream_port: number | null;
+    status: 'active' | 'stopped' | string;
+    stream_port?: number | null;
 }
 
 export interface ActiveContainer {
-    port: number;
     camera_id: string;
+    port: number;
     stream_queue: string;
 }
 
