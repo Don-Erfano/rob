@@ -1,11 +1,23 @@
 "use client";
 
-import clsx from "clsx";
 import { useCameraService } from "@/service/app-services/cameras";
+import { StatusCard } from "@/components/StatusCard";
+import { Icon } from "@iconify/react";
+import { UserCard } from "@/components/UserCard";
+import { useFaceService } from "@/service/app-services/faces/new-faces";
+import { formatJalali } from "@/utils/helper/time-formatter";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const { cameras, loading, error } = useCameraService();
+  const router = useRouter();
+  const { cameras, loading: camLoading, error: camError } = useCameraService();
+  const { newFaces, loading: faceLoading, error: faceError } = useFaceService();
+  const loading = camLoading || faceLoading;
+  const error = camError || faceError;
 
+  const routingCamera = () => {
+    router.push("/camera");
+  };
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -23,42 +35,24 @@ export default function Home() {
   }
 
   return (
-    <div className="grid bg-white grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <div className="text-gray-500">
-        <p>Available Cameras</p>
+    <div className="w-[100%] grid bg-gray-100/80 items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+      <div className="flex flex-wrap justify-center gap-4">
+        {newFaces.map((face) => {
+          return (
+            <UserCard
+              key={face.id}
+              id={face.id}
+              user_name={face.name}
+              last_seen={formatJalali(face.last_seen)}
+              image_data={`data:image/jpeg;base64,${face.image_data}`}
+              score={face.score}
+              camera_name={face.camera_id}
+              onEdit={() => console.log("Edit", face.id)}
+              onDelete={() => console.log("Delete", face.id)}
+            />
+          );
+        })}
       </div>
-
-      <ul className="space-y-4">
-        {cameras.map((cam) => (
-          <li
-            key={cam.camera_id}
-            className={clsx(
-              "p-4 rounded border",
-              cam.status === "active" ? "border-green-500" : "border-red-500",
-            )}
-          >
-            <p
-              className={clsx(
-                "font-medium",
-                cam.status === "active" ? "text-green-500 " : "text-red-500 ",
-              )}
-            >
-              {cam.camera_id}
-            </p>
-            <p className="text-sm text-gray-900">{cam.rtsp_url}</p>
-            <span
-              className={clsx(
-                "text-xs mt-1 inline-block py-1 rounded",
-                cam.status === "active"
-                  ? "bg-green-200 text-green-800"
-                  : "text-red-600",
-              )}
-            >
-              {cam.status.toUpperCase()}
-            </span>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

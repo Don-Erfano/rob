@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@iconify/react": "^6.0.0",
     "alova": "^3.2.11",
     "axios": "^1.9.0",
     "clsx": "^2.1.1",
@@ -27,10 +28,12 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
+    "@types/moment-jalaali": "^0.7.9",
+    "moment-jalaali": "^0.10.4",
     "eslint-config-next": "15.3.2",
+    "nucleus-ui-builder": "^0.0.9",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.7",
-    "nucleus-ui-builder": "^0.0.9",
     "typescript": "^5"
   }
 }
