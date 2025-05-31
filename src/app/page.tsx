@@ -6,18 +6,12 @@ import { Icon } from "@iconify/react";
 import { UserCard } from "@/components/UserCard";
 import { useFaceService } from "@/service/app-services/faces/new-faces";
 import { formatJalali } from "@/utils/helper/time-formatter";
-import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const router = useRouter();
-  const { cameras, loading: camLoading, error: camError } = useCameraService();
   const { newFaces, loading: faceLoading, error: faceError } = useFaceService();
-  const loading = camLoading || faceLoading;
-  const error = camError || faceError;
+  const loading = faceLoading;
+  const error = faceError;
 
-  const routingCamera = () => {
-    router.push("/camera");
-  };
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
